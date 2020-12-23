@@ -24,10 +24,17 @@ sha256sums=('c7c5d8b0ff9edb810ed901ea21352c9830bfa286f3c18b1292deca5b2f8febd2'
             '5b6f8847ec0c3848375755213c3009c273f478b4b80ed2c5f0af8f67ee0e94fb'
             '55aad4fe50e2da980983a69bc7c0870626064db971550d522e266feb17d38916')
 
+prepare() {
+  # TODO why disabling husky?
+  msg2 "Disabling husky (git hooks)"
+  sed -i '/"husky": ".*"/d' "${srcdir}/joplin-${pkgver}/package.json"
+
+  msg2 "Disabling unnecessary dependencies (through lerna.json)"
+  sed -i 's/"packages\/\*"/"packages\/app-cli", "packages\/app-desktop", "packages\/lib", "packages\/renderer", "packages\/tools"/' "${srcdir}/joplin-${pkgver}/lerna.json"
+}
+
 build() {
   cd "${srcdir}/joplin-${pkgver}"
-  msg2 "Disabling husky (git hooks)"
-  sed -i '/"husky": ".*"/d' package.json
 
   # Force Lang
   # INFO: https://github.com/alfredopalhares/joplin-pkgbuild/issues/25
