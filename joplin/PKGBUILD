@@ -7,13 +7,12 @@
 pkgbase="joplin"
 pkgname=('joplin' 'joplin-cli' 'joplin-desktop' 'joplin-desktop-electron')
 pkgver=1.4.19
-groups=('joplin')
+#groups=('joplin')
 pkgrel=12
 install="joplin.install"
 depends=('electron' 'gtk3' 'libexif' 'libgsf' 'libjpeg-turbo' 'libwebp' 'libxss' 'nodejs'
          'nss' 'orc' 'rsync' )
 optdepends=('libappindicator-gtk3: for tray icon')
-pkgdesc="A note taking and to-do application with synchronization capabilities - CLI and Desktop Version"
 arch=('x86_64' 'i686')
 makedepends=('git' 'npm' 'python' 'rsync' 'electron')
 url="https://joplinapp.org/"
@@ -46,9 +45,8 @@ check() {
 }
 
 package_joplin() {
-  conflicts=('joplin-cli' 'joplin-desktop' 'joplin-desktop-electron')
-  package_joplin-cli
-  package_joplin-desktop
+  pkgdesc="A note taking and to-do application with synchronization capabilities - CLI and Desktop Version"
+  depends=('joplin-cli' 'joplin-desktop')
 }
 
 #TODO: A slimdown is needed
@@ -104,6 +102,8 @@ package_joplin-desktop() {
   depends=('electron' 'gtk3' 'libexif' 'libgsf' 'libjpeg-turbo' 'libwebp' 'libxss' 'nodejs'
          'nss' 'orc')
   optdepends=('libappindicator-gtk3: for tray icon')
+  conflicts=('joplin-desktop-electron')
+  replaces=('joplin-desktop-electron')
 
   msg2 "Building Desktop with packaged Electron..."
   mkdir -p "${pkgdir}/usr/share/joplin-desktop"
@@ -128,6 +128,7 @@ package_joplin-desktop() {
 }
 
 package_joplin-desktop-electron() {
-  package_joplin-desktop
+  pkgdesc="DEPRECATED - A note taking and to-do application with synchronization capabilities"
+  depends=('joplin-desktop')
 }
 
