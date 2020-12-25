@@ -14,7 +14,7 @@ depends=('electron' 'gtk3' 'libexif' 'libgsf' 'libjpeg-turbo' 'libwebp' 'libxss'
          'nss' 'orc' 'rsync' )
 optdepends=('libappindicator-gtk3: for tray icon')
 arch=('x86_64' 'i686')
-makedepends=('git' 'npm' 'python' 'rsync' 'electron')
+makedepends=('git' 'npm' 'python' 'rsync' 'electron' 'jq')
 url="https://joplinapp.org/"
 license=('MIT')
 source=("joplin.desktop" "joplin-desktop.sh" "joplin.sh"
@@ -81,6 +81,24 @@ package_joplin-cli() {
   msg2 "Installing CLI ($pack)"
   npm install --global --production --user root --cache "$cache" \
     --prefix "${pkgdir}/usr" "$pack"
+
+  # Non-deterministic race in npm gives 777 permissions to random directories.
+  # See https://github.com/npm/cli/issues/1103 for details.
+  find "${pkgdir}/usr" -type d -exec chmod 755 {} +
+
+  # Remove references to $pkgdir
+  find "$pkgdir" -name package.json -print0 | xargs -0 sed -i "/_where/d"
+
+  # Remove references to $srcdir
+  local tmppackage="$(mktemp --tmpdir="$srcdir")"
+  local pkgjson="$pkgdir/usr/lib/node_modules/joplin/package.json" # TODO joplin name
+  jq '.|=with_entries(select(.key|test("_.+")|not))' "$pkgjson" > "$tmppackage"
+  mv "$tmppackage" "$pkgjson"
+  chmod 644 "$pkgjson"
+
+  # npm gives ownership of ALL FILES to build user
+  # https://bugs.archlinux.org/task/63396
+  chown -R root:root "${pkgdir}"
 
   msg2 "Installing license"
   install -Dm644 "${srcdir}/joplin-${pkgver}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
