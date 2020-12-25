@@ -40,9 +40,12 @@ build() {
   # INFO: https://github.com/alfredopalhares/joplin-pkgbuild/issues/25
   export LANG=en_US.utf8
 
-  msg2 "Installing dependencies..."
+  msg2 "Installing dependencies through Lerna"
   npm install
-  ./node_modules/.bin/lerna bootstrap
+
+  msg2 "Building CLI"
+  cd "${srcdir}/joplin-${pkgver}/packages/app-cli"
+  npm run build
 }
 
 package_joplin() {
@@ -50,51 +53,20 @@ package_joplin() {
   depends=('joplin-cli' 'joplin-desktop')
 }
 
-#TODO: A slimdown is needed
 package_joplin-cli() {
   pkgdesc="A note taking and to-do application with synchronization capabilities - CLI App"
-  depends=('nodejs' 'rsync')
+  depends=('coreutils' 'libsecret' 'nodejs' 'python')
 
-  msg2 "Building CLI..."
-  mkdir -p "${pkgdir}/usr/share/joplin-cli/app-cli"
-  cd "${srcdir}/joplin-${pkgver}/packages/app-cli"
-  npm run build
-  cd build
-  cp -R "." "${pkgdir}/usr/share/joplin-cli/app-cli/"
+  msg2 "Packaging CLI"
+  cd "${srcdir}/joplin-${pkgver}/packages/app-cli/build"
+  local pack="$(npm pack | tail -n 1)"
+  
+  msg2 "Installing CLI ($pack)"
+  npm install --global --production --user root \
+    --prefix "${pkgdir}/usr" "$pack"
 
-  msg2 "Copying Base Node Modules packages..."
-  cd "${srcdir}/joplin-${pkgver}/packages/app-cli"
-  cp -R "node_modules/" \
-    "${pkgdir}/usr/share/joplin-cli/app-cli"
-
-  msg2 "Copy CLI Joplin Dependencies..."
-  cd "${srcdir}/joplin-${pkgver}/packages/"
-  cp -R "fork-htmlparser2" "${pkgdir}/usr/share/joplin-cli/"
-  cp -R "fork-sax" "${pkgdir}/usr/share/joplin-cli/"
-  cp -R "lib/" "${pkgdir}/usr/share/joplin-cli/"
-  cp -R "renderer/" "${pkgdir}/usr/share/joplin-cli/"
-  cp -R "tools/" "${pkgdir}/usr/share/joplin-cli/"
-
-  #TODO: Check if existing symblinks are valid
-  msg2 "Fixing @Joplin Symlinks..."
-  cd "${pkgdir}/usr/share/joplin-cli/"
-  for dir in $(find . -type d -name "@joplin"); do
-    cd "${pkgdir}/usr/share/joplin-cli/${dir}"
-    rm -r *
-    ln -s "../../../fork-htmlparser2" "fork-htmlparser2"
-    ln -s "../../../fork-sax" "fork-sax"
-    ln -s "../../../lib" "lib"
-    ln -s "../../../renderer" "renderer"
-    ln -s "../../../tools" "tools"
-  done
-
-  msg2 "Installing LICENSE..."
-  cd "${srcdir}/joplin-${pkgver}/"
-  install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}"
-
-  msg2 "Installing Startup Script"
-  cd "${srcdir}"
-  install -Dm755 joplin.sh "${pkgdir}/usr/bin/joplin-cli"
+  msg2 "Installing license"
+  install -Dm644 "${srcdir}/joplin-${pkgver}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
 }
 
 
