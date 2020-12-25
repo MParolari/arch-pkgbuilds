@@ -45,12 +45,6 @@ build() {
   ./node_modules/.bin/lerna bootstrap
 }
 
-check() {
-  cd "${srcdir}/joplin-${pkgver}"
-  msg2 "Running Lerna Test Suite"
-  npm run test || exit 0
-}
-
 package_joplin() {
   pkgdesc="A note taking and to-do application with synchronization capabilities - CLI and Desktop Version"
   depends=('joplin-cli' 'joplin-desktop')
