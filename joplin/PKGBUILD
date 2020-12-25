@@ -24,6 +24,17 @@ sha256sums=('c7c5d8b0ff9edb810ed901ea21352c9830bfa286f3c18b1292deca5b2f8febd2'
             '5b6f8847ec0c3848375755213c3009c273f478b4b80ed2c5f0af8f67ee0e94fb'
             '55aad4fe50e2da980983a69bc7c0870626064db971550d522e266feb17d38916')
 
+# local npm cache directory
+_npm_cache="npm-cache"
+
+_get_cache() {
+  if [[ "${_npm_cache}" =~ ^/ ]]; then
+    printf "%s" "${_npm_cache}"
+  else
+    printf "%s" "${srcdir}/${_npm_cache}"
+  fi
+}
+
 prepare() {
   # TODO why disabling husky?
   msg2 "Disabling husky (git hooks)"
@@ -34,6 +45,9 @@ prepare() {
 }
 
 build() {
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+
   cd "${srcdir}/joplin-${pkgver}"
 
   # Force Lang
@@ -41,7 +55,7 @@ build() {
   export LANG=en_US.utf8
 
   msg2 "Installing dependencies through Lerna"
-  npm install
+  npm install --cache "$cache"
 
   msg2 "Building CLI"
   cd "${srcdir}/joplin-${pkgver}/packages/app-cli"
@@ -57,12 +71,15 @@ package_joplin-cli() {
   pkgdesc="A note taking and to-do application with synchronization capabilities - CLI App"
   depends=('coreutils' 'libsecret' 'nodejs' 'python')
 
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+
   msg2 "Packaging CLI"
   cd "${srcdir}/joplin-${pkgver}/packages/app-cli/build"
   local pack="$(npm pack | tail -n 1)"
   
   msg2 "Installing CLI ($pack)"
-  npm install --global --production --user root \
+  npm install --global --production --user root --cache "$cache" \
     --prefix "${pkgdir}/usr" "$pack"
 
   msg2 "Installing license"
