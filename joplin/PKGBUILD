@@ -36,12 +36,20 @@ _get_cache() {
 }
 
 prepare() {
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+
   # TODO why disabling husky?
   msg2 "Disabling husky (git hooks)"
   sed -i '/"husky": ".*"/d' "${srcdir}/joplin-${pkgver}/package.json"
 
-  msg2 "Disabling unnecessary dependencies (through lerna.json)"
-  sed -i 's/"packages\/\*"/"packages\/app-cli", "packages\/app-desktop", "packages\/lib", "packages\/renderer", "packages\/tools"/' "${srcdir}/joplin-${pkgver}/lerna.json"
+  msg2 "Tweaking lerna.json"
+  local tmp_json="$(mktemp --tmpdir="$srcdir")"
+  local lerna_json="${srcdir}/joplin-${pkgver}/lerna.json"
+  jq ".packages = [\"packages/app-cli\", \"packages/app-desktop\", \"packages/lib\", \"packages/renderer\", \"packages/tools\"] |
+      . += {\"npmClient\": \"npm\", \"npmClientArgs\": [\"--cache $cache\"]}" "$lerna_json" > "$tmp_json"
+  cat "$tmp_json" > "$lerna_json"
+  rm "$tmp_json"
 }
 
 build() {
