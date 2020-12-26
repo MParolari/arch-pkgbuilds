@@ -67,6 +67,16 @@ build() {
   msg2 "Building CLI"
   cd "${srcdir}/joplin-${pkgver}/packages/app-cli"
   npm run build
+
+  local electron_dir="/usr/lib/electron"
+  local electron_version=$(cat /usr/lib/electron/version)
+  msg2 "Packaged Electron $electron_version ($electron_dir)"
+
+  msg2 "Building Desktop"
+  cd "${srcdir}/joplin-${pkgver}/packages/app-desktop"
+  USE_HARD_LINKS=false npm --cache "$cache" run dist -- \
+    --publish=never --linux --x64 --dir="dist/" \
+    -c.electronDist="$electron_dir" -c.electronVersion="$electron_version"
 }
 
 package_joplin() {
@@ -120,20 +130,7 @@ package_joplin-desktop() {
   conflicts=('joplin-desktop-electron')
   replaces=('joplin-desktop-electron')
 
-  local cache=$(_get_cache)
-  msg2 "npm cache directory: $cache"
-  
-  local electron_dir="/usr/lib/electron"
-  local electron_version=$(cat /usr/lib/electron/version)
-  msg2 "Packaged Electron $electron_version ($electron_dir)"
-
-  # TODO move into build()
-  msg2 "Building Desktop"
-  cd "${srcdir}/joplin-${pkgver}/packages/app-desktop"
-  USE_HARD_LINKS=false npm --cache "$cache" run dist -- \
-    --publish=never --linux --x64 --dir="dist/" \
-    -c.electronDist="$electron_dir" -c.electronVersion="$electron_version"
-
+  msg2 "Installing Desktop"
   install -Dm644 \
     "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/linux-unpacked/resources/app.asar" \
     "${pkgdir}/usr/lib/${pkgname}.asar"
