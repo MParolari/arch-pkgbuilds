@@ -20,7 +20,7 @@ license=('MIT')
 source=("joplin.desktop" "joplin-desktop.sh" "joplin.sh"
         "joplin-${pkgver}.tar.gz::https://github.com/laurent22/joplin/archive/v${pkgver}.tar.gz")
 sha256sums=('c7c5d8b0ff9edb810ed901ea21352c9830bfa286f3c18b1292deca5b2f8febd2'
-            'a450284fe66d89aa463d129ce8fff3a0a1a783a64209e4227ee47449d5737be8'
+            '173ba908359daf976fb807a48b65beb372971801a6f87b397a0301b68f73c056'
             '5b6f8847ec0c3848375755213c3009c273f478b4b80ed2c5f0af8f67ee0e94fb'
             '55aad4fe50e2da980983a69bc7c0870626064db971550d522e266feb17d38916')
 
@@ -121,26 +121,32 @@ package_joplin-desktop() {
   conflicts=('joplin-desktop-electron')
   replaces=('joplin-desktop-electron')
 
-  msg2 "Building Desktop with packaged Electron..."
-  mkdir -p "${pkgdir}/usr/share/joplin-desktop"
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+  
+  local electron_dir="/usr/lib/electron"
+  local electron_version=$(cat /usr/lib/electron/version)
+  msg2 "Packaged Electron $electron_version ($electron_dir)"
+
+  # TODO move into build()
+  msg2 "Building Desktop"
   cd "${srcdir}/joplin-${pkgver}/packages/app-desktop"
-  electron_dir="/usr/lib/electron"
-  electron_version=$(cat /usr/lib/electron/version)
+  USE_HARD_LINKS=false npm --cache "$cache" run dist -- \
+    --publish=never --linux --x64 --dir="dist/" \
+    -c.electronDist="$electron_dir" -c.electronVersion="$electron_version"
 
-  USE_HARD_LINKS=false npm run dist -- --publish=never  --linux  --x64 \
-    --dir="dist/" -c.electronDist=$electron_dir -c.electronVersion=$electron_version
+  install -Dm644 \
+    "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/linux-unpacked/resources/app.asar" \
+    "${pkgdir}/usr/lib/${pkgname}.asar"
+  # TODO install app.asar.unpacked/ ???
 
-  cd dist/linux-unpacked/
-  cp -R "." "${pkgdir}/usr/share/joplin-desktop"
+  msg2 "Installing license"
+  install -Dm644 "${srcdir}/joplin-${pkgver}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
 
-  msg2 "Installing LICENSE..."
-  cd "${srcdir}/joplin-${pkgver}/"
-  install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}"
-
-  msg2 "Installing startup script and desktop file..."
-  cd "${srcdir}"
-  install -Dm755 ${srcdir}/joplin-desktop.sh "${pkgdir}/usr/bin/joplin-desktop"
-  install -Dm644 ${srcdir}/joplin.desktop -t "${pkgdir}/usr/share/applications"
+  msg2 "Installing startup script and desktop file"
+  install -Dm755 "${srcdir}/joplin-desktop.sh" "${pkgdir}/usr/bin/joplin-desktop"
+  install -Dm644 "${srcdir}/joplin.desktop" -t "${pkgdir}/usr/share/applications"
+  # TODO install icons ???
 }
 
 package_joplin-desktop-electron() {
