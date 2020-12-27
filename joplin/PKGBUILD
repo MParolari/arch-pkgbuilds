@@ -142,7 +142,16 @@ package_joplin-desktop() {
   msg2 "Installing startup script and desktop file"
   install -Dm755 "${srcdir}/joplin-desktop.sh" "${pkgdir}/usr/bin/joplin-desktop"
   install -Dm644 "${srcdir}/joplin.desktop" -t "${pkgdir}/usr/share/applications"
-  # TODO install icons ???
+  
+  msg2 "Installing icons"
+  local -r src_icon_dir="${srcdir}/joplin-${pkgver}/packages/app-desktop/build/icons"
+  local -i size
+  for size in 16 22 24 32 36 48 64 72 96 128 192 256 512; do
+    [[ -f "${src_icon_dir}/${size}x${size}.png" ]] &&
+      install -Dm644 \
+        "${src_icon_dir}/${size}x${size}.png" \
+        "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/joplin.png"
+  done
 }
 
 package_joplin-desktop-electron() {
