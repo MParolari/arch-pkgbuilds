@@ -5,9 +5,9 @@
 # https://github.com/alfredopalhares/arch-pkgbuilds
 
 pkgbase="joplin"
-pkgname=('joplin' 'joplin-cli' 'joplin-desktop')
+pkgname=('joplin' 'joplin-desktop')
 pkgver=1.4.19
-#groups=('joplin')
+groups=('joplin')
 pkgrel=12
 install="joplin.install"
 depends=('electron' 'gtk3' 'libexif' 'libgsf' 'libjpeg-turbo' 'libwebp' 'libxss' 'nodejs'
@@ -84,11 +84,6 @@ build() {
 }
 
 package_joplin() {
-  pkgdesc="A note taking and to-do application with synchronization capabilities - CLI and Desktop Version"
-  depends=('joplin-cli' 'joplin-desktop')
-}
-
-package_joplin-cli() {
   pkgdesc="A note taking and to-do application with synchronization capabilities - CLI App"
   depends=('coreutils' 'libsecret' 'nodejs' 'python')
 
