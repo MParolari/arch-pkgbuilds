@@ -72,10 +72,14 @@ build() {
   local electron_version=$(cat /usr/lib/electron/version)
   msg2 "Packaged Electron $electron_version ($electron_dir)"
 
+  # ./generateSha512.js fails if AppImage is not built
+  mkdir -p "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/"
+  touch "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/AppImage"
+
   msg2 "Building Desktop"
   cd "${srcdir}/joplin-${pkgver}/packages/app-desktop"
   USE_HARD_LINKS=false npm --cache "$cache" run dist -- \
-    --publish=never --linux --x64 --dir="dist/" \
+    --publish=never --x64 --dir \
     -c.electronDist="$electron_dir" -c.electronVersion="$electron_version"
 }
 
