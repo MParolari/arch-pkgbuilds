@@ -1,0 +1,112 @@
+
+# NOTES:
+#- This pkgbuild will download other ~76MB of dependencies while running,
+#  unless the npm cache already saved them
+#- The npm cache directory can be configured with _npm_cache variable;
+#  _npm_cache can be an absolute path or relative to $srcdir
+
+# TODOS:
+#- Check dependencies
+#- Download all the dependencies "manually", not through npm
+#- Correct errors and warnings given by namcap
+
+pkgname='joplin-desktop'
+pkgdesc="A note taking and to-do application with synchronization capabilities - Desktop"
+pkgver=1.5.14
+pkgrel=1
+groups=('joplin')
+arch=('x86_64')
+depends=('electron' 'gtk3' 'libexif' 'libgsf' 'libjpeg-turbo' 'libwebp' 'libxss' 'nodejs'
+         'nss' 'orc' 'rsync' )
+optdepends=('libappindicator-gtk3: for tray icon')
+makedepends=('git' 'npm' 'python' 'rsync' 'electron' 'jq')
+_npm_cache="npm-cache"
+url="https://joplinapp.org/"
+license=('MIT')
+source=("joplin.desktop" "joplin-desktop.sh"
+        "https://github.com/laurent22/joplin/archive/v${pkgver}.tar.gz")
+sha256sums=('62163ef1364b382c6b15e55265bf2e46b51a510c585a3bebba34f3ec99f83843'
+            '173ba908359daf976fb807a48b65beb372971801a6f87b397a0301b68f73c056'
+            'b4d7bbde4ad00447bfc34d586c68d1064f2a48f117c30a914d89a2814b549137')
+
+_get_cache() {
+  if [[ "${_npm_cache}" =~ ^/ ]]; then
+    printf "%s" "${_npm_cache}"
+  else
+    printf "%s" "${srcdir}/${_npm_cache}"
+  fi
+}
+
+prepare() {
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+
+  msg2 "Disabling husky (git hooks)"
+  sed -i '/"husky": ".*"/d' "${srcdir}/joplin-${pkgver}/package.json"
+
+  msg2 "Create empty/fake AppImage"
+  # ./generateSha512.js fails if AppImage is not built (and indeed it won't)
+  # we avoid the crash placing an empty file AppImage
+  mkdir -p "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/"
+  touch "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/AppImage"
+
+  msg2 "Tweaking lerna.json"
+  # make sure lerna will use our npm cache, and build only necessary packages
+  local tmp_json="$(mktemp --tmpdir="$srcdir")"
+  local lerna_json="${srcdir}/joplin-${pkgver}/lerna.json"
+  jq ".packages = [
+        \"packages/app-desktop\",
+        \"packages/fork-htmlparser2\", \"packages/fork-sax\",
+        \"packages/lib\", \"packages/renderer\", \"packages/tools\",
+        \"packages/turndown\", \"packages/turndown-plugin-gfm\"
+        ] |
+      . += {\"npmClient\": \"npm\", \"npmClientArgs\": [\"--cache $cache\"]}" \
+    "$lerna_json" > "$tmp_json"
+  cat "$tmp_json" > "$lerna_json"
+  rm "$tmp_json"
+}
+
+build() {
+  local cache=$(_get_cache)
+  msg2 "npm cache directory: $cache"
+
+  cd "${srcdir}/joplin-${pkgver}"
+
+  msg2 "Installing dependencies through Lerna"
+  npm install --cache "$cache"
+
+  local electron_dir="/usr/lib/electron"
+  local electron_version=$(cat /usr/lib/electron/version)
+
+  msg2 "Building with packaged Electron $electron_version ($electron_dir)"
+  cd "${srcdir}/joplin-${pkgver}/packages/app-desktop"
+  USE_HARD_LINKS=false npm --cache "$cache" run dist -- \
+    --publish=never --x64 --dir \
+    -c.electronDist="$electron_dir" -c.electronVersion="$electron_version"
+}
+
+package() {
+  msg2 "Installing application"
+  install -Dm644 \
+    "${srcdir}/joplin-${pkgver}/packages/app-desktop/dist/linux-unpacked/resources/app.asar" \
+    "${pkgdir}/usr/lib/${pkgname}.asar"
+  # TODO install app.asar.unpacked/ ???
+
+  msg2 "Installing license"
+  install -Dm644 "${srcdir}/joplin-${pkgver}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+
+  msg2 "Installing startup script and desktop file"
+  install -Dm755 "${srcdir}/joplin-desktop.sh" "${pkgdir}/usr/bin/joplin-desktop"
+  install -Dm644 "${srcdir}/joplin.desktop" -t "${pkgdir}/usr/share/applications"
+  
+  msg2 "Installing icons"
+  local -r src_icon_dir="${srcdir}/joplin-${pkgver}/packages/app-desktop/build/icons"
+  local -i size
+  for size in 16 22 24 32 36 48 64 72 96 128 192 256 512; do
+    [[ -f "${src_icon_dir}/${size}x${size}.png" ]] &&
+      install -Dm644 \
+        "${src_icon_dir}/${size}x${size}.png" \
+        "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/joplin.png"
+  done
+}
+
