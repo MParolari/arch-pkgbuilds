@@ -38,9 +38,6 @@ package() {
   [[ "${_npm_cache}" =~ ^/ ]] && cache="${_npm_cache}"
   msg2 "npm cache directory: $cache"
 
-  msg2 "Installing license"
-  install -Dm644 "${srcdir}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
-  
   msg2 "Installing application"
   npm install --global --production --user root --cache "$cache" \
     --prefix "${pkgdir}/usr" "${pkgname}-${pkgver}.tgz"
@@ -55,4 +52,7 @@ package() {
   # npm gives ownership of ALL FILES to build user
   # https://bugs.archlinux.org/task/63396
   chown -R root:root "${pkgdir}"
+
+  msg2 "Installing license"
+  install -Dm644 "${srcdir}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
 }
