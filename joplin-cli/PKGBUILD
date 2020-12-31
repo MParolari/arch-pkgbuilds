@@ -1,0 +1,58 @@
+
+# NOTES:
+#- This pkgbuild will download other ~76MB of dependencies while running,
+#  unless the npm cache already saved them
+#- The npm cache directory can be configured with _npm_cache variable;
+#  _npm_cache can be an absolute path or relative to $srcdir
+#- The package is not stripped, for faster packaging
+#- python is required by node-gyp (sqlite3, @joplin/lib)
+
+# TODOS:
+#- Use a package-lock.json or other mechanism to ensure reproducible builds
+#- Download all the dependencies "manually", not through npm
+#- Do not install dependencies already installed or available elsewhere;
+#  e.g. node-gyp is provided officially by pacman
+#- Remove architecture-dependent package (e.g. sqlite3),
+#  and so make this package arch-independent (i.e. arch='any')
+#- Correct errors and warnings given by namcap
+
+pkgname='joplin'
+pkgdesc="A note taking and to-do application with synchronization capabilities - CLI App"
+pkgver=1.5.1
+pkgrel=1
+groups=('joplin')
+arch=('x86_64')
+depends=('nodejs' 'libsecret' 'python')
+makedepends=('npm')
+_npm_cache="npm-cache"
+options=('!strip')
+url="https://joplinapp.org/"
+license=('MIT')
+source=("https://registry.npmjs.org/joplin/-/${pkgname}-${pkgver}.tgz" "LICENSE")
+noextract=("${pkgname}-${pkgver}.tgz")
+sha256sums=('47d2f494c19866a79e4fbfd7183f1baa9afbf9560ee5b548c00276e2ab7b14e9'
+            '29b08bdccec90c1132c02957375247e5902161c28d1579eaf903773416610717')
+
+package() {
+  local cache="${srcdir}/${_npm_cache}"
+  [[ "${_npm_cache}" =~ ^/ ]] && cache="${_npm_cache}"
+  msg2 "npm cache directory: $cache"
+
+  msg2 "Installing license"
+  install -Dm644 "${srcdir}/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+  
+  msg2 "Installing application"
+  npm install --global --production --user root --cache "$cache" \
+    --prefix "${pkgdir}/usr" "${pkgname}-${pkgver}.tgz"
+
+  msg2 "Tweaking"
+  # Non-deterministic race in npm gives 777 permissions to random directories.
+  # See https://github.com/npm/cli/issues/1103 for details.
+  find "${pkgdir}/usr" -type d -exec chmod 755 {} +
+  # Remove references to $pkgdir and $srcdir
+  find "$pkgdir" -name package.json -print0 | xargs -0 \
+    sed --in-place -e "s|${pkgdir}||g" -e "s|${srcdir}||g"
+  # npm gives ownership of ALL FILES to build user
+  # https://bugs.archlinux.org/task/63396
+  chown -R root:root "${pkgdir}"
+}
